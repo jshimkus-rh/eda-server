@@ -51,6 +51,19 @@ _ErrorHandlersArgType = Union[
     None,
 ]
 
+def get_redis_client(**kwargs):
+    """Instantiate a Redis client via DAB.
+
+    DAB will return an appropriate client for HA based on the passed
+    parameters.
+    """
+    # Make the URL that DAB expects as part of the creation.
+    schema = "redis"
+    if kwargs.get("ssl", False):
+        schema = "rediss"
+    url = f"{schema}://{kwargs.get('host')}:{kwargs.get('port')}"
+    return _get_redis_client(url, **kwargs)
+
 
 def get_redis_client(**kwargs):
     """Instantiate a Redis client via DAB.
@@ -225,6 +238,14 @@ class DefaultWorker(_Worker):
         if queue_class is None:
             queue_class = Queue
         connection = _get_necessary_client_connection(connection)
+
+        # django-rq's rqworker command does not support --connection-class so
+        # we cannot specify the DAB redis client that way.  Even if it did we
+        # couldn't use it as DAB requires a url parameter that Redis does not.
+        # If the connection we're given is not from DAB we replace it with one
+        # that is.
+        if type(connection) not in [DABRedis, DABRedisCluster]:
+            connection = get_redis_client(**default.rq_redis_client_instantiation_parameters())
 
         super().__init__(
             queues=queues,
