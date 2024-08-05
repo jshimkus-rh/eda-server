@@ -51,6 +51,7 @@ _ErrorHandlersArgType = Union[
     None,
 ]
 
+
 def get_redis_client(**kwargs):
     """Instantiate a Redis client via DAB.
 
