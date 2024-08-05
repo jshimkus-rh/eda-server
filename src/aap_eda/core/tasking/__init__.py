@@ -239,14 +239,6 @@ class DefaultWorker(_Worker):
             queue_class = Queue
         connection = _get_necessary_client_connection(connection)
 
-        # django-rq's rqworker command does not support --connection-class so
-        # we cannot specify the DAB redis client that way.  Even if it did we
-        # couldn't use it as DAB requires a url parameter that Redis does not.
-        # If the connection we're given is not from DAB we replace it with one
-        # that is.
-        if type(connection) not in [DABRedis, DABRedisCluster]:
-            connection = get_redis_client(**default.rq_redis_client_instantiation_parameters())
-
         super().__init__(
             queues=queues,
             name=name,
