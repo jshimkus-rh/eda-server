@@ -1,0 +1,313 @@
+x-environment: &common-env
+  EDA_DB_HOST: postgres
+  EDA_MQ_HOST: ${EDA_MQ_HOST:-redis}
+  EDA_MQ_PORT: ${EDA_MQ_PORT:-6379}
+  EDA_MQ_USER: ${EDA_MQ_USER:-}
+  EDA_MQ_USER_PASSWORD: ${EDA_MQ_USER_PASSWORD:-}
+  EDA_MQ_REDIS_HA_CLUSTER_HOSTS: ${EDA_MQ_REDIS_HA_CLUSTER_HOSTS:-}
+  DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-aap_eda.settings.development}
+  EDA_ALLOWED_HOSTS: '*'
+  EDA_DEPLOYMENT_TYPE: ${EDA_DEPLOYMENT_TYPE:-podman}
+  EDA_WEBSOCKET_BASE_URL: ${EDA_WEBSOCKET_BASE_URL:-ws://eda-ws:8000}
+  EDA_WEBSOCKET_SSL_VERIFY: "no"
+  EDA_PODMAN_SOCKET_URL: tcp://podman:8888
+  EDA_CONTROLLER_URL: ${EDA_CONTROLLER_URL:-https://awx-example.com}
+  EDA_CONTROLLER_TOKEN: ${EDA_CONTROLLER_TOKEN:-some-secret-token}
+  EDA_CONTROLLER_SSL_VERIFY: ${EDA_CONTROLLER_SSL_VERIFY:-no}
+  EDA_PROTOCOL: http
+  EDA_HOST: ${EDA_HOST:-eda-api:8000}
+  EDA_SERVER: http://${EDA_HOST:-eda-api:8000}
+  EDA_ANSIBLE_RULEBOOK_LOG_LEVEL: ${EDA_ANSIBLE_RULEBOOK_LOG_LEVEL:-'-v'}
+  EDA_CONTAINER_NAME_PREFIX: ${EDA_CONTAINER_NAME_PREFIX:-eda}
+  EDA_PODMAN_ENV_VARS: ${EDA_PODMAN_ENV_VARS:-'@none None'}
+  EDA_MAX_RUNNING_ACTIVATIONS: ${EDA_MAX_RUNNING_ACTIVATIONS:-5}
+  EDA_ACTIVATION_RESTART_SECONDS_ON_COMPLETE: ${EDA_ACTIVATION_RESTART_SECONDS_ON_COMPLETE:-5}
+  EDA_ACTIVATION_RESTART_SECONDS_ON_FAILURE: ${EDA_ACTIVATION_RESTART_SECONDS_ON_FAILURE:-5}
+  EDA_SECRET_KEY: ${EDA_SECRET_KEY:-'insecure'}
+  EDA_DEBUG: ${EDA_DEBUG:-True}
+  EDA_DB_PASSWORD: ${EDA_DB_PASSWORD:-'secret'}
+  EDA_RULEBOOK_WORKER_QUEUES: "activation-node1,activation-node2"
+  EDA_ANSIBLE_BASE_JWT_VALIDATE_CERT: ${EDA_ANSIBLE_BASE_JWT_VALIDATE_CERT:-False}
+  EDA_ANSIBLE_BASE_JWT_KEY: ${EDA_ANSIBLE_BASE_JWT_KEY:-'https://localhost'}
+  EDA_ALLOW_LOCAL_RESOURCE_MANAGEMENT: ${EDA_ALLOW_LOCAL_RESOURCE_MANAGEMENT:-True}
+  EDA_ALLOW_LOCAL_ASSIGNING_JWT_ROLES: ${EDA_ALLOW_LOCAL_ASSIGNING_JWT_ROLES:-True}
+  EDA_ALLOW_SHARED_RESOURCE_CUSTOM_ROLES: ${EDA_ALLOW_SHARED_RESOURCE_CUSTOM_ROLES:-True}
+  EDA_ANSIBLE_RULEBOOK_FLUSH_AFTER: ${EDA_ANSIBLE_RULEBOOK_FLUSH_AFTER:-100}
+  EDA_DEFAULT_QUEUE_TIMEOUT: ${EDA_DEFAULT_QUEUE_TIMEOUT:-300}
+  EDA_DEFAULT_RULEBOOK_QUEUE_TIMEOUT: ${EDA_DEFAULT_RULEBOOK_QUEUE_TIMEOUT:-120}
+  EDA_RESOURCE_SERVER__URL: ${EDA_RESOURCE_SERVER__URL:-'@none None'}
+  EDA_RESOURCE_SERVER__SECRET_KEY: ${EDA_RESOURCE_SERVER_SECRET__KEY:-'@none None'}
+  EDA_RESOURCE_SERVER__VALIDATE_HTTPS: ${EDA_RESOURCE_SERVER_VALIDATE__HTTPS:-False}
+  EDA_RESOURCE_JWT_USER_ID: ${EDA_RESOURCE_JWT_USER_ID:-'@none None'}
+  EDA_ANSIBLE_BASE_MANAGED_ROLE_REGISTRY: >
+      ${EDA_ANSIBLE_BASE_MANAGED_ROLE_REGISTRY:-@json {}}
+  EDA_SERVER_UUID: edgecafe-beef-feed-fade-decadeedgecafe
+  EDA_PG_NOTIFY_DSN: "host=host.containers.internal port=5432 dbname=eda user=postgres password=secret"
+  EDA_PG_NOTIFY_DSN_SERVER: "host=postgres port=5432 dbname=eda user=postgres password=secret"
+  EDA_EVENT_STREAM_BASE_URL: ${EDA_EVENT_STREAM_BASE_URL:-https://localhost:8443/edgecafe-beef-feed-fade-decadeedgecafe/}
+  EDA_EVENT_STREAM_MTLS_BASE_URL: ${EDA_EVENT_STREAM_MTLS_BASE_URL:-https://localhost:8443/mtls/edgecafe-beef-feed-fade-decadeedgecafe/}
+  EDA_WEBHOOK_HOST: ${EDA_WEBHOOK_HOST:-eda-webhook-api:8000}
+  EDA_WEBHOOK_SERVER: http://${EDA_WEBHOOK_HOST:-eda-webhook-api:8000}
+  SSL_CERTIFICATE: ${SSL_CERTIFICATE:-/certs/cert.pem}
+  SSL_CERTIFICATE_KEY: ${SSL_CERTIFICATE_KEY:-/certs/cert.key}
+  SSL_CLIENT_CERTIFICATE: ${SSL_CLIENT_CERTIFICATE:-/certs/CA.pem}
+
+services:
+  podman-pre-setup-node1:
+    user: "0"
+    image: ${EDA_PODMAN_IMAGE:-quay.io/containers/podman}:${EDA_PODMAN_VERSION:-v4}
+    privileged: true
+    command: >-
+      chown -R podman /home/podman/.local/share/containers/storage
+    volumes:
+      - 'podman_data_node1:/home/podman/.local/share/containers/storage'
+
+  podman-pre-setup-node2:
+    user: "0"
+    image: ${EDA_PODMAN_IMAGE:-quay.io/containers/podman}:${EDA_PODMAN_VERSION:-v4}
+    privileged: true
+    command: >-
+      chown -R podman /home/podman/.local/share/containers/storage
+    volumes:
+      - 'podman_data_node2:/home/podman/.local/share/containers/storage'
+
+  podman-node1:
+    user: "1000"
+    image: ${EDA_PODMAN_IMAGE:-quay.io/containers/podman}:${EDA_PODMAN_VERSION:-v4}
+    privileged: true
+    command: >-
+      podman system service --time=0 tcp://0.0.0.0:8888
+    ports:
+      - "${EDA_PODMAN_NODE1_PORT:-8888}:8888"
+    volumes:
+      - 'podman_data_node1:/home/podman/.local/share/containers/storage'
+    depends_on:
+     - podman-pre-setup-node1
+
+  podman-node2:
+    user: "1000"
+    image: ${EDA_PODMAN_IMAGE:-quay.io/containers/podman}:${EDA_PODMAN_VERSION:-v4}
+    privileged: true
+    command: >-
+      podman system service --time=0 tcp://0.0.0.0:8888
+    ports:
+      - "${EDA_PODMAN_NODE2_PORT:-8889}:8888"
+    volumes:
+      - 'podman_data_node2:/home/podman/.local/share/containers/storage'
+    depends_on:
+     - podman-pre-setup-node2
+
+  postgres:
+    image: ${EDA_POSTGRES_IMAGE:-quay.io/sclorg/postgresql-15-c9s}:${EDA_POSTGRES_VERSION:-latest}
+    environment:
+      POSTGRESQL_USER: eda
+      POSTGRESQL_PASSWORD: secret
+      POSTGRESQL_ADMIN_PASSWORD: secret
+      POSTGRESQL_DATABASE: eda
+    ports:
+      - '${EDA_PG_PORT:-5432}:5432'
+    volumes:
+      - 'postgres_data:/var/lib/pgsql/data'
+    healthcheck:
+      test: [ 'CMD', 'pg_isready', '-U', 'postgres' ]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  eda-api:
+    image: ${EDA_IMAGE:-localhost/aap-eda}
+    build:
+      context: ../../
+      dockerfile: tools/docker/Dockerfile
+    environment: *common-env
+    command:
+      - /bin/bash
+      - -c
+      - >-
+        aap-eda-manage migrate
+        && aap-eda-manage create_initial_data
+        && scripts/create_superuser.sh
+        && aap-eda-manage runserver 0.0.0.0:8000
+    ports:
+      - "${EDA_API_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: [ 'CMD', 'curl', '-q', 'http://localhost:8000/_healthz' ]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - '../../:/app/src:z'
+    networks:
+      - service-mesh
+      - default
+      - redis_network
+
+  eda-ws:
+    image: ${EDA_IMAGE:-localhost/aap-eda}
+    environment: *common-env
+    command:
+      - /bin/bash
+      - -c
+      - >-
+        aap-eda-manage runserver 0.0.0.0:8000
+    ports:
+      - "${EDA_WS_PORT:-8001}:8000"
+    depends_on:
+      eda-api:
+        condition: service_healthy
+    volumes:
+      - '../../:/app/src:z'
+    networks:
+      - service-mesh
+      - default
+      - redis_network
+
+  eda-scheduler:
+    image: ${EDA_IMAGE:-localhost/aap-eda}
+    deploy:
+      replicas: ${EDA_SCHEDULER_WORKERS:-2}
+    environment: *common-env
+    command:
+      - /bin/bash
+      - -c
+      - >-
+        aap-eda-manage scheduler
+    depends_on:
+      eda-api:
+        condition: service_healthy
+    volumes:
+      - '../../:/app/src:z'
+    restart: always
+    networks:
+      - default
+      - redis_network
+
+  eda-default-worker:
+    image: ${EDA_IMAGE:-localhost/aap-eda}
+    deploy:
+      replicas: ${EDA_DEFAULT_WORKERS:-2}
+    environment: *common-env
+    command:
+      - /bin/bash
+      - -c
+      - >-
+        aap-eda-manage rqworker
+        --worker-class aap_eda.core.tasking.DefaultWorker
+    depends_on:
+      eda-api:
+        condition: service_healthy
+    volumes:
+      - '../../:/app/src:z'
+    restart: always
+    networks:
+      - default
+      - redis_network
+
+  eda-activation-worker-node1:
+    image: ${EDA_IMAGE:-localhost/aap-eda}
+    deploy:
+      replicas: ${EDA_ACTIVATION_WORKERS:-2}
+    environment:
+      <<: *common-env
+      EDA_RULEBOOK_QUEUE_NAME: 'activation-node1'
+      EDA_PODMAN_SOCKET_URL: tcp://podman-node1:8888
+    command:
+      - /bin/bash
+      - -c
+      - >-
+        aap-eda-manage rqworker
+        --worker-class aap_eda.core.tasking.ActivationWorker
+    depends_on:
+      eda-api:
+        condition: service_healthy
+    volumes:
+      - '../../:/app/src:z'
+    restart: always
+    networks:
+      - default
+      - redis_network
+
+  eda-activation-worker-node2:
+    image: ${EDA_IMAGE:-localhost/aap-eda}
+    deploy:
+      replicas: ${EDA_ACTIVATION_WORKERS:-2}
+    environment:
+      <<: *common-env
+      EDA_RULEBOOK_QUEUE_NAME: 'activation-node2'
+      EDA_PODMAN_SOCKET_URL: tcp://podman-node2:8888
+    command:
+      - /bin/bash
+      - -c
+      - >-
+        aap-eda-manage rqworker
+        --worker-class aap_eda.core.tasking.ActivationWorker
+    depends_on:
+      eda-api:
+        condition: service_healthy
+    volumes:
+      - '../../:/app/src:z'
+    restart: always
+    networks:
+      - default
+      - redis_network
+
+  eda-webhook-api:
+    image: "${EDA_IMAGE:-quay.io/ansible/eda-server:main}"
+    environment: *common-env
+    command:
+      - /bin/bash
+      - -c
+      - >-
+        gunicorn -b 0.0.0.0:8000 -w ${EDA_WEBHOOK_WORKERS:-2} aap_eda.wsgi --access-logfile -
+    ports:
+      - '8555:8000'
+    depends_on:
+      eda-api:
+        condition: service_healthy
+    healthcheck:
+      test: [ 'CMD', 'curl', '-q', 'http://localhost:8000/_healthz' ]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+    networks:
+      - default
+      - redis_network
+
+  squid:
+    image: ${EDA_SQUID_IMAGE:-quay.io/openshifttest/squid-proxy}:${EDA_SQUID_VERSION:-1.2.0}
+    profiles:
+      - proxy
+    hostname: squid
+    volumes:
+      - './squid/squid.conf:/etc/squid/squid.conf:z'
+      - './squid/htpass:/etc/squid/htpass:z'
+    ports:
+      - '${EDA_PROXY_PORT:-3128}:3128'
+
+  eda-ui:
+    image: ${EDA_UI_IMAGE:-quay.io/ansible/eda-ui}:${EDA_UI_VERSION:-main}
+    environment: *common-env
+    ports:
+      - '${EDA_UI_PORT:-8443}:443'
+    volumes:
+      - './tools/docker/my_certs:/tmp/my_certs:z'
+    depends_on:
+      eda-webhook-api:
+        condition: service_healthy
+    networks:
+      - service-mesh
+      - default
+
+volumes:
+  postgres_data: {}
+  podman_data_node1: {}
+  podman_data_node2: {}
+
+networks:
+  service-mesh:
+    name: service-mesh
+  redis_network:

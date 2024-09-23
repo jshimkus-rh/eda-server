@@ -1,0 +1,134 @@
+services:
+  redis-a:
+    image: ${EDA_REDIS_IMAGE:-quay.io/fedora/redis-6}:${EDA_REDIS_VERSION:-latest}
+    command:
+      - redis-server
+      - /etc/redis/redis.conf
+    ports:
+      - '6380:6379'
+      - '16380:16379'
+    networks:
+      redis_network:
+        ipv4_address: 172.38.0.10
+    healthcheck:
+      test: [ 'CMD', 'redis-cli', 'ping' ]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    volumes:
+        - ./redis/redis-a/data:/data
+        - ./redis/redis-a/redis.conf:/etc/redis/redis.conf
+
+  redis-b:
+    image: ${EDA_REDIS_IMAGE:-quay.io/fedora/redis-6}:${EDA_REDIS_VERSION:-latest}
+    command:
+      - redis-server
+      - /etc/redis/redis.conf
+    ports:
+      - '6381:6379'
+      - '16381:16379'
+    networks:
+      redis_network:
+        ipv4_address: 172.38.0.11
+    healthcheck:
+      test: [ 'CMD', 'redis-cli', 'ping' ]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    volumes:
+        - ./redis/redis-b/data:/data
+        - ./redis/redis-b/redis.conf:/etc/redis/redis.conf
+
+  redis-c:
+    image: ${EDA_REDIS_IMAGE:-quay.io/fedora/redis-6}:${EDA_REDIS_VERSION:-latest}
+    command:
+      - redis-server
+      - /etc/redis/redis.conf
+    ports:
+      - '6382:6379'
+      - '16382:16379'
+    networks:
+      redis_network:
+        ipv4_address: 172.38.0.12
+    healthcheck:
+      test: [ 'CMD', 'redis-cli', 'ping' ]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    volumes:
+        - ./redis/redis-c/data:/data
+        - ./redis/redis-c/redis.conf:/etc/redis/redis.conf
+
+  redis-d:
+    image: ${EDA_REDIS_IMAGE:-quay.io/fedora/redis-6}:${EDA_REDIS_VERSION:-latest}
+    command:
+      - redis-server
+      - /etc/redis/redis.conf
+    ports:
+      - '6383:6379'
+      - '16383:16379'
+    networks:
+      redis_network:
+        ipv4_address: 172.38.0.13
+    healthcheck:
+      test: [ 'CMD', 'redis-cli', 'ping' ]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    volumes:
+        - ./redis/redis-d/data:/data
+        - ./redis/redis-d/redis.conf:/etc/redis/redis.conf
+
+  redis-e:
+    image: ${EDA_REDIS_IMAGE:-quay.io/fedora/redis-6}:${EDA_REDIS_VERSION:-latest}
+    command:
+      - redis-server
+      - /etc/redis/redis.conf
+    ports:
+      - '6384:6379'
+      - '16384:16379'
+    networks:
+      redis_network:
+        ipv4_address: 172.38.0.14
+    healthcheck:
+      test: [ 'CMD', 'redis-cli', 'ping' ]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    volumes:
+        - ./redis/redis-e/data:/data
+        - ./redis/redis-e/redis.conf:/etc/redis/redis.conf
+
+  redis-f:
+    image: ${EDA_REDIS_IMAGE:-quay.io/fedora/redis-6}:${EDA_REDIS_VERSION:-latest}
+    command:
+      - redis-server
+      - /etc/redis/redis.conf
+    ports:
+      - '6385:6379'
+      - '16385:16379'
+    networks:
+      redis_network:
+        ipv4_address: 172.38.0.15
+    healthcheck:
+      test: [ 'CMD', 'redis-cli', 'ping' ]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    volumes:
+        - ./redis/redis-f/data:/data
+        - ./redis/redis-f/redis.conf:/etc/redis/redis.conf
+
+networks:
+  redis_network:
+      driver: bridge
+      ipam:
+          config:
+              - subnet: 172.38.0.0/16
+                gateway: 172.38.0.1
